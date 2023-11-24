@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "Hello World!"
+title:  "Hello, World!"
 ---
 
 We've finally got some math! Might be worthwhile to blog this effort.
@@ -17,4 +17,4 @@ def foo(bar: str):
     return bar
 ```
 
-![Nyan Cat](/assets/nyanCat.png){: style="display:block; margin-left: auto; margin-right: auto;"}
+![Nyan Cat](/assets/nyanCat.gif){: style="display:block; margin-left: auto; margin-right: auto;"}
