@@ -2,11 +2,36 @@
 layout: post
 title:  "Numerical differentiation with a single function evaluation"
 ---
+## Table of Contents
+1. [Introduction](#introduction)
+2. [Background](#background)
+   1. [First-Order Approximations](#first-order-approximations)
+   2. [Higher-Order Approximations](#higher-order-approximations)
+   3. [Some Comments](#some-comments)
+3. [The Problem](#the-problem)
+4. [Roundoff Error and Catastrophic Cancellation](#roundoff-error-and-catastrophic-cancellation)
+   1. [IEEE 754](#ieee-754)
+   2. [Machine Epsilon](#machine-epsilon)
+   3. [Choosing the step size](#choosing-the-step-size)
+      1. [Forward / Backward Difference](#forward--backward-difference)
+      2. [Centered Difference](#centered-difference)
+      3. [Round-off error from step](#round-off-error-from-step)
+      4. [Analysis](#analysis)
+5. [Complex Step Differentiation](#complex-step-differentiation)
+   1. [Some Comments](#some-comments-1)
+   2. [Alternate Derivation](#alternate-derivation)
+
+## Introduction
+In this article, we'll review *complex step differentiation*, a cool and perhaps little known technique for numerical differentiation
+that provides much greater accuracy than the popular finite difference based approaches. As the name suggests, this technique involves 
+a little bit of complex analysis. However, we don't expect any background and will try to keep this article fairly self-contained.
+If you're anxious to know the technique, feel free to [skip ahead](#complex-step-differentiation). Otherwise, keep reading!
 
 ## Background
+Let's start by reviewing the use of finite difference for numerical differentiation.
 
-Let's review the use of finite differences for numerical differentiation. Recall that the derivative $$f^{'}(x)$$ of a 
-function $$f: \mathbb{R} \to \mathbb{R}$$ is defined as
+### First-Order Approximations
+Recall that the derivative $$f^{'}(x)$$ of a function $$f: \mathbb{R} \to \mathbb{R}$$ is defined as
 
 $$ f^{'}(x) = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h}.$$
 
@@ -58,7 +83,7 @@ $$ f^{'}(x) \approx \frac{f(x) - f(x - h)}{h}$$
 
 which is also a first-order method. These are termed the *one-sided* formulas. 
 
-#### Higher-Order Approximations
+### Higher-Order Approximations
 We can obtain higher-order approximations to $$f^{'}$$ by combining different Taylor expansions. For example, subtracting
 the expansions
 
@@ -104,7 +129,7 @@ $$
 f^{'}(x) \approx \frac{f(x + \frac{h}{2}) - f(x - \frac{h}{2})}{h}.
 $$
 
-#### Some Comments
+### Some Comments
 
 From this analysis, it may seem that we'd always prefer the centered difference over the first-order methods because of the additional
 order in accuracy. However, there are instances where we'd choose a first-order method instead. For example:
@@ -196,7 +221,7 @@ Empirically, we see that truncation error initially dominates roundoff error. On
 error becomes very small, does roundoff error start to dominate. In fact, the roundoff error *increases* as $$h$$ decreases.
 Therefore, these approximations are [ill-conditioned](https://en.wikipedia.org/wiki/Condition_number).
 
-### Roundoff Error and Catastrophic Cancellation
+## Roundoff Error and Catastrophic Cancellation
 Wikipedia defines [catastrophic cancellation](https://en.wikipedia.org/wiki/Catastrophic_cancellation) as 
 > the phenomenon that subtracting good approximations to two nearby numbers may yield a very bad approximation to the difference of the original numbers.
 
@@ -227,7 +252,7 @@ To further analyze the effect of subtractive cancellation in the problem at hand
 $$h$$ that minimize both types of error, we'll have to discuss our specific approximation.
 
 
-#### IEEE 754
+### IEEE 754
 In this case, we're approximating real numbers using a finite precision representation. Specifically, NumPy's `float64` 
 type uses the [IEEE 754](https://en.wikipedia.org/wiki/IEEE_754) double-precision binary floating-point format, 
 officially called *binary64* (also known as *double*). A short exposé of this format will be helpful.
@@ -261,17 +286,18 @@ print(f'float64: {original_val}')
 > binary64: 0100000000110100001111010111000010100011110101110000101000111101
 > float64: 20.24
 
-#### Machine Epsilon
-Of course, we can't represent an infinite set of values with a finite set of bits. Therefore, IEEE-754 defines a set of rules that
+### Machine Epsilon
+Of course, we can't represent an infinite set of values with a finite set of bits. Therefore, IEEE 754 defines a set of rules that
 dictate how a number $$x$$ is rounded to the nearest representable one in binary64, denoted $$\text{fl}(x)$$. We call $$\text{fl}(x)$$ the
 *floating point representation* of $$x$$. Going forward, we'll use the notation $$\tilde{x}$$ to mean $$\text{fl}(x)$$ for simplicity.
 
-Naturally, we're interested to know the error in the representation of $$x$$ by $$\tilde{x}$$. As it turns out,
+Naturally, we're interested to know the error in the representation of $$x$$ by $$\tilde{x}$$. As it turns out, we have a bound
+on the relative error of this representation:
 
 $$\frac{|\tilde{x} - x|}{|x|} \leq \epsilon$$
 
-where $$\epsilon$$ is known as *interval machine epsilon*. The upper bound is realized for numbers that round to 1.0. Therefore,
-$$\epsilon$$ is equal to the distance between 1 and the next smallest representable number larger than 1.0. 
+where $$\epsilon$$ is known as *interval machine epsilon*. $$\epsilon$$ is equal to the distance between 1 and the next smallest representable number larger than 1.0. 
+In other words, the value of the [unit in the last place](https://en.wikipedia.org/wiki/Unit_in_the_last_place) (aka *ulp*) relative to 1.
 For binary64, that means $$\epsilon = 2^{-(p - 1)} = 2^{-(53 - 1)} = 2^{-52} \approx 2.2 \cdot 10^{-16} $$, where the precision $$p = 53$$ is the number of
 digits in the significand (including the leading implicit bit) in our binary64 representation. This is confirmed with some calls to NumPy's 
 [finfo](https://numpy.org/doc/stable/reference/generated/numpy.finfo.html):
@@ -284,6 +310,13 @@ print((
 ```
 > Number of bits in mantissa: 52  
 > Interval machine epsilon: 2.220446049250313e-16
+
+Python's `math` module also has a nice built-in for this:
+```python
+print(math.ulp(1))
+```
+> 2.220446049250313e-16
+
 
 This bound is independent of the type of rounding used. However, we can do better assuming that "round-to-nearest" is used:
 
@@ -309,12 +342,12 @@ Interestingly, IEEE 754 also requires exact (aka correct) rounding, meaning that
 if the operation were computed exactly and then the result rounded to the nearest floating point number. This guarantees
 that the relative error in each arithmetic operation is also bounded by $$u$$.
 
-#### Choosing the step size
+### Choosing the step size
 
 Let's perform some analysis to find a step size $$h$$ that minimizes the combination of these two errors (truncation and roundoff)
 for each of the algorithms we discussed. We'll discover that $$h$$ is well-above machine epsilon in all cases.
 
-##### Forward / Backward Difference
+#### Forward / Backward Difference
 Define 
 
 $$
@@ -419,7 +452,7 @@ $$
 h^* = \max(|x|, 1) \sqrt{u}.
 $$
 
-##### Centered Difference
+#### Centered Difference
 The analysis here is the same as above, except that 
 
 $$
@@ -479,6 +512,33 @@ $$
 
 This is on the order of $$u^{2/3} \approx 10^{-11}$$, meaning that centered difference with an optimal step-size provides
 up to 11 digits of significant figures.
+
+#### Round-off error from step
+
+Of course, we can't forget that there's also round-off error present in *x + h*. We can write this as $$x + h + \epsilon$$ where 
+$$\epsilon$$ is our roundoff error. Then, our forward difference is really
+
+$$
+\begin{align}
+\frac{f(x + h + \epsilon) - f(x)}{h} &= \frac{f(x + h + \epsilon) - f(x + h)}{\epsilon}\frac{\epsilon}{h} + \frac{f(x + h) - f(x)}{h} \\
+&\approx f'(x + h)\frac{\epsilon}{h} + f'(x) && \text{def. of forward difference} \\
+&\approx (1 + \frac{\epsilon}{h})f'(x). && \text{assume } f'(x+h) \approx f'(x)
+\end{align}
+$$
+
+Thus, if $$\epsilon$$ is order $$u$$ and $$h$$ is order $$\sqrt{u}$$ then we've added a relative error of order $$\sqrt{u}$$
+into the calculation. Therefore, to avoid this problem we usually define $$h$$ (for first order methods)
+as 
+
+$$
+\begin{align}
+x_h &= x + h \\
+h &= x_h - x
+\end{align}
+$$
+
+to ensure $$x + h$$ and $$x$$ differ by an exactly representable number.
+
 
 #### Analysis
 Let's revisit the example we used to illustrate the issue with vanilla finite difference methods, where we considered $$f(x) = \sin (x)$$.
@@ -579,8 +639,8 @@ f^{'}(x) &= \frac{\operatorname{Im}(f(x + ih))}{h} + h^2\frac{f^{(3)}(\xi)}{6} \
 $$
 
 How cool! This approximation is known as the *complex-step*. Importantly, it's a second-order method not subject to
-catastrophic cancellation. That means we can take $$h$$ arbitrarily small (e.g. $$10^{-200}$$) without worrying about roundoff
-error. To demonstrate, let's update our code:
+catastrophic cancellation. In other words, it doesn't suffer from the roundoff error present in the other methods. That means we can take $$h$$ 
+arbitrarily small (e.g. $$10^{-200}$$) without worrying about roundoff error. To demonstrate, let's update our code:
 
 ```python
 eps = np.finfo(float).eps
@@ -601,7 +661,7 @@ def plot_errors():
 ```
 ![Finite Difference Errors pt. 2](/assets/finite_difference_err_with_complex.png){: style="display:block; margin-left: auto; margin-right: auto;"}
 
-#### Some Comments
+### Some Comments
 - This method is typically slower than its finite difference counterparts, despite the fact that it only uses a single
   function evaluation. This is due to the expense of complex arithmetic. For example, a brief review of NumPy's source (see
   [here](https://github.com/numpy/numpy/blob/main/numpy/_core/src/npymath/npy_math_complex.c.src#L549-L557)
@@ -624,7 +684,7 @@ def plot_errors():
   That partly explains why you rarely see this method in practice.
 - We also recover a second-order approximation to $$f$$ for free, as $$\operatorname{Re}(f(x+ih)) \approx f(x)$$.
 
-#### Alternate Derivation
+### Alternate Derivation
 
 Suppose $$z \in \mathbb{C}$$. Then, $$z = x + iy$$ for some $$x, y \in \mathbb{R}$$. For $$f: \mathbb{C} \to \mathbb{C}$$, 
 we have
