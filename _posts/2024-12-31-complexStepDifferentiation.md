@@ -12,10 +12,10 @@ title:  "Numerical differentiation with a single function evaluation"
 4. [Roundoff Error and Catastrophic Cancellation](#roundoff-error-and-catastrophic-cancellation)
    1. [IEEE 754](#ieee-754)
    2. [Machine Epsilon](#machine-epsilon)
-   3. [Choosing the step size](#choosing-the-step-size)
+   3. [Choosing the Step Size](#choosing-the-step-size)
       1. [Forward / Backward Difference](#forward--backward-difference)
       2. [Centered Difference](#centered-difference)
-      3. [Round-off error from step](#round-off-error-from-step)
+      3. [Roundoff Error from Step](#roundoff-error-from-step)
       4. [Analysis](#analysis)
 5. [Complex Step Differentiation](#complex-step-differentiation)
    1. [Some Comments](#some-comments-1)
@@ -28,7 +28,7 @@ a little bit of complex analysis. However, we don't expect any background and wi
 If you're anxious to know the technique, feel free to [skip ahead](#complex-step-differentiation). Otherwise, keep reading!
 
 ## Background
-Let's start by reviewing the use of finite difference for numerical differentiation.
+Let's start by reviewing the use of finite differences for numerical differentiation.
 
 ### First-Order Approximations
 Recall that the derivative $$f^{'}(x)$$ of a function $$f: \mathbb{R} \to \mathbb{R}$$ is defined as
@@ -342,7 +342,7 @@ Interestingly, IEEE 754 also requires exact (aka correct) rounding, meaning that
 if the operation were computed exactly and then the result rounded to the nearest floating point number. This guarantees
 that the relative error in each arithmetic operation is also bounded by $$u$$.
 
-### Choosing the step size
+### Choosing the Step Size
 
 Let's perform some analysis to find a step size $$h$$ that minimizes the combination of these two errors (truncation and roundoff)
 for each of the algorithms we discussed. We'll discover that $$h$$ is well-above machine epsilon in all cases.
@@ -513,9 +513,9 @@ $$
 This is on the order of $$u^{2/3} \approx 10^{-11}$$, meaning that centered difference with an optimal step-size provides
 up to 11 digits of significant figures.
 
-#### Round-off error from step
+#### Roundoff Error from Step
 
-Of course, we can't forget that there's also round-off error present in *x + h*. We can write this as $$x + h + \epsilon$$ where 
+Of course, we can't forget that there's also roundoff error present in *x + h*. We can write this as $$x + h + \epsilon$$ where 
 $$\epsilon$$ is our roundoff error. Then, our forward difference is really
 
 $$
